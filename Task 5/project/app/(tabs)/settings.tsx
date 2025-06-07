@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { Info, ChevronRight } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 export default function SettingsScreen() {
   const { colors, isDark, toggleTheme } = useTheme();
@@ -149,7 +150,7 @@ export default function SettingsScreen() {
           
           <TouchableOpacity 
             style={[styles.aboutButton, { backgroundColor: colors.card }]}
-            onPress={() => {/* Navigate to help center */}}
+            onPress={() => {router.navigate('/About/helpCenter')}} 
           >
             <Text style={[styles.aboutButtonText, { color: colors.text }]}>
               Help Center
@@ -159,7 +160,7 @@ export default function SettingsScreen() {
           
           <TouchableOpacity 
             style={[styles.aboutButton, { backgroundColor: colors.card }]}
-            onPress={() => {/* Navigate to privacy policy */}}
+            onPress={() => {router.navigate('/About/privacyPolicy')}}
           >
             <Text style={[styles.aboutButtonText, { color: colors.text }]}>
               Privacy Policy
@@ -169,7 +170,7 @@ export default function SettingsScreen() {
           
           <TouchableOpacity 
             style={[styles.aboutButton, { backgroundColor: colors.card }]}
-            onPress={() => {/* Navigate to terms of service */}}
+            onPress={() => {router.navigate('/About/termsOfService')}}
           >
             <Text style={[styles.aboutButtonText, { color: colors.text }]}>
               Terms of Service

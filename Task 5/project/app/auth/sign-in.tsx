@@ -5,6 +5,7 @@ import { Link, router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 
 export default function SignInScreen() {
   const { colors } = useTheme();
@@ -15,6 +16,8 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const navigation = useNavigation();
   
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -41,7 +44,7 @@ export default function SignInScreen() {
         <View style={styles.header}>
           <TouchableOpacity 
             style={styles.backButton} 
-            onPress={() => router.back()}
+            onPress={() => navigation.goBack()}
           >
             <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>

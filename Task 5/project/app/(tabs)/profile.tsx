@@ -109,10 +109,10 @@ export default function ProfileScreen() {
             //onPress={signOut}
             onPress={() => {
               signOut();
-              router.replace('/auth/sign-in');
+              router.replace('/auth/welcome');
             }}
           >
-            <Text style={[styles.signOutText, { color: colors.danger }]}>
+            <Text  style={[styles.signOutText, { color: colors.danger }]}>
               Sign Out
             </Text>
           </TouchableOpacity>

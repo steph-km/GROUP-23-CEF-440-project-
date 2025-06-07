@@ -59,7 +59,7 @@ export default function WelcomeScreen() {
       <View style={styles.buttonContainer}>
         <Link href="/auth/sign-in" asChild>
           <TouchableOpacity style={[styles.button, styles.primaryButton, { backgroundColor: colors.primary }]}>
-            <Text style={styles.primaryButtonText}>Sign In</Text>
+            <Text style={[styles.secondaryButtonText, { color: colors.primary }]}>Sign In</Text>
           </TouchableOpacity>
         </Link>
         
@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingHorizontal: 24,
     paddingBottom: 32,
+    
   },
   button: {
     width: '100%',
