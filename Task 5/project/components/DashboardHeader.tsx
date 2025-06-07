@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Bell } from 'lucide-react-native';
 import { formatDistanceToNow } from '@/utils/dateUtils';
+import { router } from 'expo-router';
 
 interface DashboardHeaderProps {
   lastRefreshed: Date;
@@ -25,6 +26,7 @@ export function DashboardHeader({ lastRefreshed }: DashboardHeaderProps) {
         
         <TouchableOpacity 
           style={[styles.notificationButton, { backgroundColor: colors.card }]}
+          onPress={() => router.navigate('/About/notifications')}
         >
           <Bell size={20} color={colors.text} />
           <View style={[styles.notificationBadge, { backgroundColor: colors.primary }]} />
