@@ -7,18 +7,20 @@ import { DashboardHeader } from '@/components/DashboardHeader';
 import { StatusCard } from '@/components/StatusCard';
 import { MetricsSummary } from '@/components/MetricsSummary';
 import { FeedbackPrompt } from '@/components/FeedbackPrompt';
-import { getNetworkStats } from '@/utils/networkUtils';
+import { getNetworkStats, NetworkSample } from '@/utils/networkUtils';
+
+type StatusLevel = 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
 
 type NetworkStats = {
   signalStrength: string;
-  signalStatus: "excellent" | "good" | "fair" | "poor" | "unknown";
+  signalStatus: StatusLevel;
   downloadSpeed: string;
-  downloadStatus: "excellent" | "good" | "fair" | "poor" | "unknown";
+  downloadStatus: StatusLevel;
   uploadSpeed: string;
-  uploadStatus: "excellent" | "good" | "fair" | "poor" | "unknown";
+  uploadStatus: StatusLevel;
   latency: number;
-  latencyStatus: "excellent" | "good" | "fair" | "poor" | "unknown";
-  dailySummary: any[]; // Replace 'any' with a more specific type if available
+  latencyStatus: StatusLevel;
+  dailySummary: NetworkSample[];
 };
 
 export default function Dashboard() {
@@ -34,7 +36,27 @@ export default function Dashboard() {
   const loadNetworkData = async () => {
     try {
       const stats = await getNetworkStats();
-      setNetworkStats(stats);
+
+      if (!stats) {
+        setNetworkStats(null);
+        return;
+      }
+
+      const signalStrength = stats.signalStrength !== null ? `${stats.signalStrength} dBm` : 'N/A';
+
+      const transformed: NetworkStats = {
+        signalStrength,
+        signalStatus: classifySignalStrength(stats.signalStrength),
+        downloadSpeed: stats.downloadSpeed.toFixed(2),
+        downloadStatus: (stats.downloadStatus as StatusLevel) ?? 'unknown',
+        uploadSpeed: stats.uploadSpeed.toFixed(2),
+        uploadStatus: (stats.uploadStatus as StatusLevel) ?? 'unknown',
+        latency: stats.latency,
+        latencyStatus: (stats.latencyStatus as StatusLevel) ?? 'unknown',
+        dailySummary: stats.dailySummary || [],
+      };
+
+      setNetworkStats(transformed);
       setLastRefreshed(new Date());
     } catch (error) {
       console.error('Failed to load network data:', error);
@@ -50,7 +72,7 @@ export default function Dashboard() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <DashboardHeader lastRefreshed={lastRefreshed} />
-      
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -59,7 +81,7 @@ export default function Dashboard() {
         }
       >
         <NetworkStatus />
-        
+
         <View style={styles.cardsContainer}>
           <StatusCard 
             title="Signal Strength"
@@ -75,7 +97,7 @@ export default function Dashboard() {
             status={networkStats?.downloadStatus || 'unknown'}
           />
         </View>
-        
+
         <View style={styles.cardsContainer}>
           <StatusCard 
             title="Upload Speed"
@@ -93,15 +115,23 @@ export default function Dashboard() {
             lowerIsBetter
           />
         </View>
-        
+
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Today's Overview</Text>
         <MetricsSummary data={networkStats?.dailySummary || []} />
-        
+
         <FeedbackPrompt />
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const classifySignalStrength = (strength: number | null): StatusLevel => {
+  if (strength === null) return 'unknown';
+  if (strength >= -70) return 'excellent';
+  if (strength >= -85) return 'good';
+  if (strength >= -100) return 'fair';
+  return 'poor';
+};
 
 const styles = StyleSheet.create({
   container: {
