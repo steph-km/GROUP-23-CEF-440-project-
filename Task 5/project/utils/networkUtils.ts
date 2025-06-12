@@ -6,7 +6,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const CACHE_KEY = 'network_stats_cache';
 const SAMPLE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-const TEST_FILE_URL = 'https://speed.hetzner.de/100MB.bin';
+//const TEST_FILE_URL = 'https://speed.hetzner.de/100MB.bin';
+const TEST_FILE_URL = 'https://speed.cloudflare.com/__down?bytes=5000000';
+
 
 export type NetworkSample = {
   timestamp: number;
@@ -40,47 +42,66 @@ export type NetworkData = {
 };
 
 export const getCurrentNetworkInfo = async (): Promise<NetworkData> => {
-  const netInfo = await NetInfo.fetch();
-  const signalStrength = Platform.OS === 'android' ? -65 : null; // Mock for now
+  try {
+    const netInfo = await NetInfo.fetch();
+    console.log('NetInfo:', netInfo);
 
-  const location = await getCurrentLocation();
-  const downloadSpeed = await measureDownloadSpeed();
-  const uploadSpeed = await estimateUploadSpeed();
-  const latency = await measureLatency();
+    const signalStrength = Platform.OS === 'android' ? -65 : null; // TODO: Replace with actual fetch on Android
+    console.log('Signal Strength:', signalStrength);
 
-  const downloadStatus = classifySpeed(downloadSpeed);
-  const uploadStatus = classifySpeed(uploadSpeed);
-  const latencyStatus = classifyLatency(latency);
+    const location = await getCurrentLocation();
+    console.log('Location:', location);
 
-  const cached = await getCachedData();
-  const timestamp = Date.now();
-  const newSample: NetworkSample = {
-    timestamp,
-    downloadSpeed,
-    uploadSpeed,
-    latency,
-    location,
-  };
+    const downloadSpeed = await measureDownloadSpeed();
+    console.log('Download Speed (Mbps):', downloadSpeed);
 
-  const updatedSummary = [...cached?.dailySummary || [], newSample];
-  const updated: NetworkData = {
-    type: netInfo.type,
-    isConnected: netInfo.isConnected ?? false,
-    isInternetReachable: netInfo.isInternetReachable ?? null,
-    signalStrength,
-    downloadSpeed,
-    downloadStatus,
-    uploadSpeed,
-    uploadStatus,
-    latency,
-    latencyStatus,
-    location,
-    dailySummary: updatedSummary,
-  };
+    const uploadSpeed = await estimateUploadSpeed();
+    console.log('Upload Speed (Mbps):', uploadSpeed);
 
-  await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data: updated, timestamp }));
-  return updated;
+    const latency = await measureLatency();
+    console.log('Latency (ms):', latency);
+
+    const downloadStatus = classifySpeed(downloadSpeed);
+    const uploadStatus = classifySpeed(uploadSpeed);
+    const latencyStatus = classifyLatency(latency);
+
+    const cached = await getCachedData();
+    const timestamp = Date.now();
+    const newSample: NetworkSample = {
+      timestamp,
+      downloadSpeed,
+      uploadSpeed,
+      latency,
+      location,
+    };
+
+    const updatedSummary = [...cached?.dailySummary || [], newSample];
+
+    const updated: NetworkData = {
+      type: netInfo.type,
+      isConnected: netInfo.isConnected ?? false,
+      isInternetReachable: netInfo.isInternetReachable ?? null,
+      signalStrength,
+      downloadSpeed,
+      downloadStatus,
+      uploadSpeed,
+      uploadStatus,
+      latency,
+      latencyStatus,
+      location,
+      dailySummary: updatedSummary,
+    };
+
+    console.log('Final NetworkData:', updated);
+
+    await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data: updated, timestamp }));
+    return updated;
+  } catch (error) {
+    console.error('Error in getCurrentNetworkInfo:', error);
+    throw error;
+  }
 };
+
 
 const getCurrentLocation = async (): Promise<{ latitude: number; longitude: number; accuracy: number; } | null> => {
   try {
@@ -108,34 +129,59 @@ const getCurrentLocation = async (): Promise<{ latitude: number; longitude: numb
 const measureDownloadSpeed = async (): Promise<number> => {
   try {
     const startTime = Date.now();
-    const res = await fetch(TEST_FILE_URL, { method: 'GET', headers: { Range: 'bytes=0-1000000' } });
-    if (!res.ok) throw new Error('Failed to fetch');
-    await res.blob();
+    const response = await fetch(TEST_FILE_URL, {
+      method: 'GET',
+      headers: { Range: 'bytes=0-5000000' }, // 5MB
+    });
+
+    if (!response.ok) throw new Error('Failed to fetch download test file');
+
+    const blob = await response.blob();
     const endTime = Date.now();
-    const sizeMB = 1 / 1024; // ~1 MB in MB (approx)
+
+    const sizeBytes = blob.size;
+    const sizeMB = sizeBytes / (1024 * 1024); // convert to MB
     const durationSec = (endTime - startTime) / 1000;
-    return Number((sizeMB / durationSec).toFixed(2));
-  } catch {
+
+    const speedMbps = sizeMB / durationSec;
+    console.log('Measured download size:', sizeMB, 'MB in', durationSec, 'sec');
+    return Number(speedMbps.toFixed(2));
+  } catch (e) {
+    console.warn('Download speed test failed:', e);
     return 0;
   }
 };
 
+
 const estimateUploadSpeed = async (): Promise<number> => {
   try {
+    const data = new Uint8Array(5 * 1024 * 1024); // 5MB buffer
+    data.fill(97); // fill with letter 'a'
+
     const start = Date.now();
-    const blob = new Blob(['x'.repeat(1000000)]); // ~1MB
-    await fetch('https://httpbin.org/post', {
+    const response = await fetch('https://httpbin.org/post', {
       method: 'POST',
-      body: blob,
+      headers: {
+        'Content-Type': 'application/octet-stream',
+      },
+      body: data,
     });
+
+    if (!response.ok) throw new Error('Failed to upload test data');
+
     const end = Date.now();
-    const sizeMB = 1 / 1024;
-    const timeSec = (end - start) / 1000;
-    return Number((sizeMB / timeSec).toFixed(2));
-  } catch {
+    const sizeMB = data.length / (1024 * 1024);
+    const durationSec = (end - start) / 1000;
+
+    const speedMbps = sizeMB / durationSec;
+    console.log('Upload size:', sizeMB, 'MB in', durationSec, 'sec');
+    return Number(speedMbps.toFixed(2));
+  } catch (e) {
+    console.warn('Upload speed test failed:', e);
     return 0;
   }
 };
+
 
 const measureLatency = async (): Promise<number> => {
   try {

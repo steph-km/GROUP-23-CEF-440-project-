@@ -8,6 +8,7 @@ import { StatusCard } from '@/components/StatusCard';
 import { MetricsSummary } from '@/components/MetricsSummary';
 import { FeedbackPrompt } from '@/components/FeedbackPrompt';
 import { getNetworkStats, NetworkSample } from '@/utils/networkUtils';
+import { getCurrentNetworkInfo } from '@/utils/networkUtils'; // update import if needed
 
 type StatusLevel = 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
 
@@ -35,7 +36,7 @@ export default function Dashboard() {
 
   const loadNetworkData = async () => {
     try {
-      const stats = await getNetworkStats();
+     const stats = await getCurrentNetworkInfo();
 
       if (!stats) {
         setNetworkStats(null);
