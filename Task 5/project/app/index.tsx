@@ -1,6 +1,12 @@
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { getItem } from '@/utils/storage';
+import { registerBackgroundTask} from '@/utils/networkBackgroundTask';
+
+useEffect(() => {
+  registerBackgroundTask();
+}, []);
+
 
 export default function Index() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
