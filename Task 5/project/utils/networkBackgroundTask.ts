@@ -2,12 +2,12 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import { getCurrentNetworkInfo, logDailyNetworkSummary } from './networkUtils';
 
-
 const TASK_NAME = 'network-monitor-task';
 
 TaskManager.defineTask(TASK_NAME, async () => {
   try {
     console.log('Running background network monitoring task...');
+    console.log('Background task ran at:', new Date().toLocaleString()); // ✅ Added timestamp log
     await getCurrentNetworkInfo();
     await logDailyNetworkSummary();
     return BackgroundFetch.BackgroundFetchResult.NewData;
@@ -19,7 +19,12 @@ TaskManager.defineTask(TASK_NAME, async () => {
 
 export const registerBackgroundTask = async () => {
   const status = await BackgroundFetch.getStatusAsync();
-  if (status === BackgroundFetch.BackgroundFetchStatus.Restricted || status === BackgroundFetch.BackgroundFetchStatus.Denied) {
+  console.log("Checking background fetch registration status:", status);
+
+  if (
+    status === BackgroundFetch.BackgroundFetchStatus.Restricted ||
+    status === BackgroundFetch.BackgroundFetchStatus.Denied
+  ) {
     console.warn('Background fetch is not allowed');
     return;
   }
@@ -34,3 +39,4 @@ export const registerBackgroundTask = async () => {
     console.log('Background task registered');
   }
 };
+
