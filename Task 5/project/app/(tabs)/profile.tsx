@@ -103,20 +103,20 @@ export default function ProfileScreen() {
             </Text>
             <ChevronRight size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.signOutButton, { borderColor: colors.danger }]}
-            //onPress={signOut}
-            onPress={() => {
-              signOut();
-              router.replace('/auth/welcome');
-            }}
-          >
-            <Text  style={[styles.signOutText, { color: colors.danger }]}>
-              Sign Out
-            </Text>
-          </TouchableOpacity>
         </View>
+        
+        <TouchableOpacity 
+          style={[styles.signOutButton, { borderColor: colors.danger }]}
+          //onPress={signOut}
+          onPress={() => {
+            signOut();
+            router.replace('/auth/welcome');
+          }}
+        >
+          <Text  style={[styles.signOutText, { color: colors.danger }]}>
+            Sign Out
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

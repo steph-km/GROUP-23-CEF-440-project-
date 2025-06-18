@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { getItem, setItem, removeItem } from '@/utils/storage';
 
 // Define user type
@@ -8,7 +14,6 @@ interface User {
   email: string;
   phone?: string;
   location?: string;
-  // Add other user properties as needed
 }
 
 // Define auth context type
@@ -17,7 +22,13 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
+  signUp: (
+    name: string,
+    email: string,
+    password: string,
+    phone: string,
+    location: string
+  ) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -40,7 +51,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is already authenticated
+  // Load user from storage if already signed in
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -60,33 +71,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loadUser();
   }, []);
 
-  // In a real app, this would make an API call to your authentication server
+  // Mock sign in function
   const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      
-      // Here, you would typically:
-      // 1. Call your authentication API
-      // 2. Validate credentials
-      // 3. Receive a token and user data
-      
-      // Mock authentication
+
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock successful login (in a real app, this would come from your API)
+
       const mockUser: User = {
         id: 'usr_' + Math.random().toString(36).substr(2, 9),
         name: 'Jamison Lii',
-        email: email,
+        email,
         phone: '+237 695 425 977',
         location: 'Check Point, Buea',
       };
-      
-      // Save authentication state
+
       const token = 'mock_token_' + Date.now();
       await setItem('userToken', token);
       await setItem('userData', JSON.stringify(mockUser));
-      
+
       setUser(mockUser);
     } catch (error) {
       console.error('Sign in failed:', error);
@@ -96,33 +100,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // In a real app, this would create a new user account
-  const signUp = async (name: string, email: string, password: string) => {
+  // Updated sign up function with phone and location
+  const signUp = async (
+    name: string,
+    email: string,
+    password: string,
+    phone: string,
+    location: string
+  ) => {
     try {
       setIsLoading(true);
-      
-      // Here, you would typically:
-      // 1. Call your user registration API
-      // 2. Create a new user account
-      // 3. Receive a token and user data
-      
-      // Mock registration
+
+      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock successful registration
+
       const mockUser: User = {
         id: 'usr_' + Math.random().toString(36).substr(2, 9),
-        name: name,
-        email: email,
-        phone: '',
-        location: '',
+        name,
+        email,
+        phone,
+        location,
       };
-      
-      // Save authentication state
+
       const token = 'mock_token_' + Date.now();
       await setItem('userToken', token);
       await setItem('userData', JSON.stringify(mockUser));
-      
+
       setUser(mockUser);
     } catch (error) {
       console.error('Sign up failed:', error);
@@ -134,7 +137,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signOut = async () => {
     try {
-      // Clear authentication state
       await removeItem('userToken');
       await removeItem('userData');
       setUser(null);
@@ -143,7 +145,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isLoading,
