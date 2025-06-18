@@ -249,3 +249,40 @@ export const getNetworkStats = async (): Promise<NetworkData | null> => {
   }
 };
 
+
+
+export const logDailyNetworkSummary = async () => {
+  const cached = await getCachedData();
+  if (!cached || !cached.dailySummary || cached.dailySummary.length === 0) {
+    console.log('No network data available for daily summary.');
+    return;
+  }
+
+  const today = new Date().toDateString();
+
+  const todaySamples = cached.dailySummary.filter(sample => {
+    const sampleDate = new Date(sample.timestamp).toDateString();
+    return sampleDate === today;
+  });
+
+  if (todaySamples.length === 0) {
+    console.log('No samples for today yet.');
+    return;
+  }
+
+  const average = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
+
+  const downloadSpeeds = todaySamples.map(s => s.downloadSpeed);
+  const uploadSpeeds = todaySamples.map(s => s.uploadSpeed);
+  const latencies = todaySamples.map(s => s.latency);
+
+  const avgDownload = average(downloadSpeeds).toFixed(2);
+  const avgUpload = average(uploadSpeeds).toFixed(2);
+  const avgLatency = average(latencies).toFixed(2);
+
+  console.log('📊 Daily Network Summary for', today);
+  console.log('Samples:', todaySamples.length);
+  console.log('Avg Download Speed (Mbps):', avgDownload);
+  console.log('Avg Upload Speed (Mbps):', avgUpload);
+  console.log('Avg Latency (ms):', avgLatency);
+};
