@@ -12,92 +12,120 @@ const FORM_KEY = 'signUpFormData';
 export default function SignUpScreen() {
   const { colors } = useTheme();
   const { signUp } = useAuth();
-  
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [location, setLocation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Load form from storage
   useEffect(() => {
     const loadForm = async () => {
       const saved = await getObject(FORM_KEY);
-      if (
-        saved &&
-        typeof saved === 'object' &&
-        ('name' in saved || 'email' in saved || 'password' in saved || 'confirmPassword' in saved)
-      ) {
-        setName((saved as any).name || '');
-        setEmail((saved as any).email || '');
-        setPassword((saved as any).password || '');
-        setConfirmPassword((saved as any).confirmPassword || '');
+      if (saved && typeof saved === 'object') {
+        const form = saved as {
+          name?: string;
+          email?: string;
+          password?: string;
+          confirmPassword?: string;
+          phoneNumber?: string;
+          location?: string;
+        };
+        setName(form.name || '');
+        setEmail(form.email || '');
+        setPassword(form.password || '');
+        setConfirmPassword(form.confirmPassword || '');
+        setPhoneNumber(form.phoneNumber || '');
+        setLocation(form.location || '');
       }
     };
     loadForm();
   }, []);
 
-  // Save form to storage
-  const persistForm = (newState: Partial<{ name: string; email: string; password: string; confirmPassword: string }>) => {
+  interface SignUpFormData {
+    name?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+    phoneNumber?: string;
+    location?: string;
+  }
+
+  const persistForm = (newState: Partial<SignUpFormData>): void => {
     setObject(FORM_KEY, {
       name,
       email,
       password,
       confirmPassword,
+      phoneNumber,
+      location,
       ...newState,
     });
   };
 
-  const validatePassword = (pass: string) => pass.length >= 8;
+  interface ValidatePassword {
+    (pass: string): boolean;
+  }
 
-  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validatePassword: ValidatePassword = (pass) => pass.length >= 8;
+
+  interface ValidateEmail {
+    (email: string): boolean;
+  }
+
+  const validateEmail: ValidateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  interface ValidateCameroonPhone {
+    (phone: string): boolean;
+  }
+
+  const validateCameroonPhone: ValidateCameroonPhone = (phone) => /^(?:\+237|0)(6[579]|2[23])\d{7}$/.test(phone);
 
   const handleSignUp = async () => {
-  if (!name || !email || !password || !confirmPassword) {
-    setError('Please fill in all fields');
-    return;
-  }
+    if (!name || !email || !password || !confirmPassword || !phoneNumber || !location) {
+      setError('Please fill in all fields');
+      return;
+    }
 
-  if (!validateEmail(email)) {
-    setError('Please enter a valid email address');
-    return;
-  }
+    if (!validateEmail(email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
 
-  if (!validatePassword(password)) {
-    setError('Password must be at least 8 characters long');
-    return;
-  }
+    if (!validatePassword(password)) {
+      setError('Password must be at least 8 characters long');
+      return;
+    }
 
-  if (password !== confirmPassword) {
-    setError('Passwords do not match');
-    return;
-  }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
 
-  setIsLoading(true);
-  setError('');
+    if (!validateCameroonPhone(phoneNumber)) {
+      setError('Enter a valid Cameroonian phone number');
+      return;
+    }
 
-  try {
-    await signUp(name, email, password);
+    setIsLoading(true);
+    setError('');
 
-    // Log user info to console
-    console.log('User signed up with:', {
-      name,
-      email,
-      password,
-    });
-
-    await removeItem(FORM_KEY); // Clear saved data
-    router.replace('/(tabs)');
-  } catch (err) {
-    console.error('Sign-up error:', err);
-    setError('Failed to create account. Email may already be in use.');
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+    try {
+      await signUp(name, email, password, phoneNumber, location);
+      console.log('User signed up with:', { name, email, password, phoneNumber, location });
+      await removeItem(FORM_KEY);
+      router.replace('/(tabs)');
+    } catch (err) {
+      console.error('Sign-up error:', err);
+      setError('Failed to create account. Email may already be in use.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
@@ -110,15 +138,9 @@ export default function SignUpScreen() {
           <View style={styles.placeholder} />
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.contentContainer}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
           <Text style={[styles.welcomeText, { color: colors.text }]}>Join Trackify</Text>
-          <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>
-            Create an account to help improve network service in your area
-          </Text>
+          <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>Create an account to help improve network service in your area</Text>
 
           {error ? (
             <View style={[styles.errorContainer, { backgroundColor: colors.errorBackground }]}>
@@ -157,6 +179,35 @@ export default function SignUpScreen() {
               />
             </View>
 
+            <Text style={[styles.inputLabel, { color: colors.text, marginTop: 16 }]}>Phone Number</Text>
+            <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="e.g. 6XX XXX XXX or +2376XX XXX XXX"
+                placeholderTextColor={colors.textSecondary}
+                keyboardType="phone-pad"
+                value={phoneNumber}
+                onChangeText={(text) => {
+                  setPhoneNumber(text);
+                  persistForm({ phoneNumber: text });
+                }}
+              />
+            </View>
+
+            <Text style={[styles.inputLabel, { color: colors.text, marginTop: 16 }]}>Location</Text>
+            <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="Enter your city or town"
+                placeholderTextColor={colors.textSecondary}
+                value={location}
+                onChangeText={(text) => {
+                  setLocation(text);
+                  persistForm({ location: text });
+                }}
+              />
+            </View>
+
             <Text style={[styles.inputLabel, { color: colors.text, marginTop: 16 }]}>Password</Text>
             <View style={[styles.inputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <TextInput
@@ -171,11 +222,7 @@ export default function SignUpScreen() {
                 }}
               />
               <TouchableOpacity style={styles.eyeIcon} onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? (
-                  <EyeOff size={20} color={colors.textSecondary} />
-                ) : (
-                  <Eye size={20} color={colors.textSecondary} />
-                )}
+                {showPassword ? <EyeOff size={20} color={colors.textSecondary} /> : <Eye size={20} color={colors.textSecondary} />}
               </TouchableOpacity>
             </View>
 
@@ -192,44 +239,27 @@ export default function SignUpScreen() {
                   persistForm({ confirmPassword: text });
                 }}
               />
-              {password && confirmPassword && password === confirmPassword ? (
-                <Check size={20} color={colors.success} />
-              ) : null}
+              {password && confirmPassword && password === confirmPassword ? <Check size={20} color={colors.success} /> : null}
             </View>
 
             <View style={styles.passwordRequirements}>
               <View style={styles.requirementRow}>
-                <View
-                  style={[
-                    styles.requirementDot,
-                    { backgroundColor: password.length >= 8 ? colors.success : colors.textSecondary },
-                  ]}
-                />
+                <View style={[styles.requirementDot, { backgroundColor: password.length >= 8 ? colors.success : colors.textSecondary }]} />
                 <Text style={[styles.requirementText, { color: colors.textSecondary }]}>At least 8 characters</Text>
               </View>
             </View>
           </View>
 
           <TouchableOpacity
-            style={[
-              styles.signUpButton,
-              { backgroundColor: colors.primary },
-              isLoading && { opacity: 0.7 },
-            ]}
+            style={[styles.signUpButton, { backgroundColor: colors.primary }, isLoading && { opacity: 0.7 }]}
             onPress={handleSignUp}
             disabled={isLoading}
           >
-            <Text style={styles.signUpButtonText}>
-              {isLoading ? 'Creating Account...' : 'Create Account'}
-            </Text>
+            <Text style={styles.signUpButtonText}>{isLoading ? 'Creating Account...' : 'Create Account'}</Text>
           </TouchableOpacity>
 
           <View style={styles.termsContainer}>
-            <Text style={[styles.termsText, { color: colors.textSecondary }]}>
-              By signing up, you agree to our{' '}
-              <Text style={[styles.termsLink, { color: colors.primary }]}>Terms of Service</Text> and{' '}
-              <Text style={[styles.termsLink, { color: colors.primary }]}>Privacy Policy</Text>
-            </Text>
+            <Text style={[styles.termsText, { color: colors.textSecondary }]}>By signing up, you agree to our <Text style={[styles.termsLink, { color: colors.primary }]}>Terms of Service</Text> and <Text style={[styles.termsLink, { color: colors.primary }]}>Privacy Policy</Text></Text>
           </View>
 
           <View style={styles.signInContainer}>
