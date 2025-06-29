@@ -7,7 +7,6 @@ import React, {
 } from 'react';
 import { getItem, setItem, removeItem } from '@/utils/storage';
 
-// Define user type
 interface User {
   id: string;
   name: string;
@@ -16,7 +15,6 @@ interface User {
   location?: string;
 }
 
-// Define auth context type
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
@@ -32,7 +30,6 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-// Create context with default values
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
@@ -42,7 +39,6 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-// Provider component
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -51,7 +47,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load user from storage if already signed in
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -71,36 +66,36 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loadUser();
   }, []);
 
-  // Mock sign in function
   const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('https://trackify-i4hx.onrender.com/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-      const mockUser: User = {
-        id: 'usr_' + Math.random().toString(36).substr(2, 9),
-        name: 'Jamison Lii',
-        email,
-        phone: '+237 695 425 977',
-        location: 'Check Point, Buea',
-      };
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
+      }
 
-      const token = 'mock_token_' + Date.now();
+      const data = await response.json();
+      const { token, user } = data;
+
       await setItem('userToken', token);
-      await setItem('userData', JSON.stringify(mockUser));
+      await setItem('userData', JSON.stringify(user));
 
-      setUser(mockUser);
-    } catch (error) {
+      setUser(user);
+    } catch (error: any) {
       console.error('Sign in failed:', error);
-      throw new Error('Authentication failed');
+      throw new Error(error.message || 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Updated sign up function with phone and location
   const signUp = async (
     name: string,
     email: string,
@@ -111,25 +106,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       setIsLoading(true);
 
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch('https://trackify-i4hx.onrender.com/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          phone,
+          location,
+        }),
+      });
 
-      const mockUser: User = {
-        id: 'usr_' + Math.random().toString(36).substr(2, 9),
-        name,
-        email,
-        phone,
-        location,
-      };
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
+      }
 
-      const token = 'mock_token_' + Date.now();
+      const data = await response.json();
+      const { token, user } = data;
+
       await setItem('userToken', token);
-      await setItem('userData', JSON.stringify(mockUser));
+      await setItem('userData', JSON.stringify(user));
 
-      setUser(mockUser);
-    } catch (error) {
+      setUser(user);
+    } catch (error: any) {
       console.error('Sign up failed:', error);
-      throw new Error('Registration failed');
+      throw new Error(error.message || 'Registration failed');
     } finally {
       setIsLoading(false);
     }
@@ -161,7 +164,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   );
 };
 
-// Custom hook to use the auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
