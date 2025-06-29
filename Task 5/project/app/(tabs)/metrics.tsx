@@ -17,33 +17,81 @@ import { MetricsChart } from '@/components/MetricsChart';
 import { MetricsTable } from '@/components/MetricsTable';
 import { FilterButton } from '@/components/FilterButton';
 import { useRouter } from 'expo-router';
+import { generateChartData } from '@/utils/metricsChartUtils';
+import { getCurrentNetworkInfo } from '@/utils/networkUtils';
 
-const CHART_TYPES = ['signal', 'speed', 'latency', 'reliability'];
-const TIME_PERIODS = ['day', 'week', 'month', 'year'];
-const LOCATIONS = ['Molyko', 'Mile 16', 'Check Point', 'Bonduma', 'Sandpit'];
+const CHART_TYPES = ['signal', 'speed', 'latency', 'reliability'] as const;
+const TIME_PERIODS = ['day', 'week', 'month', 'year'] as const;
+const LOCATIONS = [
+  'Molyko',
+  'Mile 16',
+  'Check Point',
+  'Bonduma',
+  'Sandpit',
+  'South',
+  'Bokwai',
+  'Tarred Malingo',
+  'Untarred Malingo',
+];
 
 export default function MetricsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
 
   const [isSignedIn, setIsSignedIn] = useState<boolean | null>(null);
-  const [activeChart, setActiveChart] = useState(CHART_TYPES[0]);
-  const [activePeriod, setActivePeriod] = useState(TIME_PERIODS[1]);
+  const [activeChart, setActiveChart] = useState<typeof CHART_TYPES[number]>('signal');
+  const [activePeriod, setActivePeriod] = useState<typeof TIME_PERIODS[number]>('week');
   const [showFilters, setShowFilters] = useState(false);
+  const [dailyNetworkStats, setDailyNetworkStats] = useState<any[]>([]);
 
-  const getMockChartData = () => {
+  const getChartData = (location: string) => {
+    const allData = dailyNetworkStats.filter(
+      (entry) => entry.locationName === location
+    );
+
+    const rawChartData = generateChartData(allData, activeChart, activePeriod);
+
+    const raw = rawChartData?.datasets?.[0]?.data || [];
+
+    console.log(`📊 Raw data for ${location}:`, raw);
+
+    if (!raw || raw.length === 0) {
+      return {
+        labels: ['No Data'],
+        datasets: [{ data: [0] }],
+      };
+    }
+
+    const cleaned = raw.map((val: number) =>
+      typeof val === 'number' && isFinite(val) && !isNaN(val) ? val : 0
+    );
+
     return {
-      labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      datasets: [
-        {
-          data: Array.from({ length: 7 }, () =>
-            Math.floor(50 + Math.random() * 50)
-          ),
-          color: () => colors.primary,
-        },
-      ],
+      labels: rawChartData.labels || Array(cleaned.length).fill(''),
+      datasets: [{ data: cleaned }],
     };
   };
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await getCurrentNetworkInfo();
+        if (response?.dailySummary) {
+          console.log('📊 Raw daily summary data lamani:', response.dailySummary);
+          const withLocationName = response.dailySummary.map((entry: any) => ({
+            ...entry,
+            locationName: 'Molyko', // ⚠️ placeholder
+          }));
+          console.log('✅ Fetched daily summary:', withLocationName);
+          setDailyNetworkStats(withLocationName);
+        }
+      } catch (error) {
+        console.error('Error fetching metrics data:', error);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -87,9 +135,11 @@ export default function MetricsScreen() {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <ChartPeriodSelector
-          periods={TIME_PERIODS}
+          periods={[...TIME_PERIODS]}
           activePeriod={activePeriod}
-          onSelectPeriod={setActivePeriod}
+          onSelectPeriod={(period: string) =>
+            setActivePeriod(period as typeof TIME_PERIODS[number])
+          }
         />
 
         <View style={styles.chartContainer}>
@@ -101,8 +151,7 @@ export default function MetricsScreen() {
                   styles.chartTypeOption,
                   {
                     color: activeChart === type ? colors.primary : colors.textSecondary,
-                    borderBottomColor:
-                      activeChart === type ? colors.primary : 'transparent',
+                    borderBottomColor: activeChart === type ? colors.primary : 'transparent',
                   },
                 ]}
                 onPress={() => setActiveChart(type)}
@@ -118,7 +167,7 @@ export default function MetricsScreen() {
             contentContainerStyle={styles.locationChartsWrapper}
           >
             {LOCATIONS.map((location, index) => {
-              const chartData = getMockChartData();
+              const chartData = getChartData(location);
               const locked = !isSignedIn && index > 0;
 
               return (
@@ -127,31 +176,33 @@ export default function MetricsScreen() {
                     {location}
                   </Text>
 
-                  <View>
-                    {!locked ? (
-                      <MetricsChart
-                        data={chartData}
-                        width={Dimensions.get('window').width - 64}
-                        height={220}
-                        chartType={activeChart}
-                      />
-                    ) : (
-                      <View
-                        style={[
-                          styles.lockOverlay,
-                          { position: 'relative', backgroundColor: 'transparent', height: 220 },
-                        ]}
+                  {!locked ? (
+                    <MetricsChart
+                      data={chartData}
+                      width={Dimensions.get('window').width - 64}
+                      height={220}
+                      chartType={activeChart}
+                    />
+                  ) : (
+                    <View
+                      style={[
+                        styles.lockOverlay,
+                        {
+                          position: 'relative',
+                          backgroundColor: 'transparent',
+                          height: 220,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.lockText}>Sign up to view more locations</Text>
+                      <Pressable
+                        style={styles.signupButton}
+                        onPress={() => router.push('/auth/welcome')}
                       >
-                        <Text style={styles.lockText}>Sign up to view more locations</Text>
-                        <Pressable
-                          style={styles.signupButton}
-                          onPress={() => router.push('/auth/welcome')}
-                        >
-                          <Text style={styles.signupText}>Sign Up</Text>
-                        </Pressable>
-                      </View>
-                    )}
-                  </View>
+                        <Text style={styles.signupText}>Sign Up</Text>
+                      </Pressable>
+                    </View>
+                  )}
                 </View>
               );
             })}
@@ -167,8 +218,8 @@ export default function MetricsScreen() {
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Notes</Text>
           <View style={[styles.noteCard, { backgroundColor: colors.card }]}>
             <Text style={[styles.noteText, { color: colors.text }]}>
-              Data is collected in the background while you use your device. The
-              more you use the app, the more accurate your network metrics will be.
+              Data is collected in the background while you use your device. The more
+              you use the app, the more accurate your network metrics will be.
             </Text>
           </View>
         </View>

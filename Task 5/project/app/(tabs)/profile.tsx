@@ -128,7 +128,7 @@ export default function ProfileScreen() {
         <View style={styles.actionsSection}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Account Actions</Text>
 
-          <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.card }]} onPress={() => {}}>
+         {/* <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.card }]} onPress={() => {}}>
             <Text style={[styles.actionButtonText, { color: colors.text }]}>Edit Profile</Text>
             <ChevronRight size={20} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -141,7 +141,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.card }]} onPress={() => {}}>
             <Text style={[styles.actionButtonText, { color: colors.text }]}>Notification Settings</Text>
             <ChevronRight size={20} color={colors.textSecondary} />
-          </TouchableOpacity>
+          </TouchableOpacity>*/}
         </View>
 
         <TouchableOpacity
