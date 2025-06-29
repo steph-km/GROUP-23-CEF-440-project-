@@ -1,6 +1,8 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { LineChart } from '@/components/LineChart';
+import { getNetworkStatsFromServer } from '@/utils/networkUtils';
+import { useEffect, useState } from 'react';
 
 interface MetricsSummaryProps {
   data: any[];
@@ -8,7 +10,29 @@ interface MetricsSummaryProps {
 
 export function MetricsSummary({ data }: MetricsSummaryProps) {
   const { colors } = useTheme();
-  
+
+  const [fetchedNetworkStats, setFetchedNetworkStats] = useState<any>({});
+
+  useEffect(() => {
+    fetchingStats();
+  }, []);
+
+  const fetchingStats = async () => {
+    try {
+      const fetched = await getNetworkStatsFromServer();
+      setFetchedNetworkStats(fetched.data);
+    } catch (error) {
+      console.error('Failed to fetch network stats:', error);
+    }
+  };
+
+  const formatNumber = (value: number | undefined): string => {
+    if (value === undefined || value === null || isNaN(value)) return '--';
+    if (value >= 1_000_000) return (value / 1_000_000).toFixed(2) + 'M';
+    if (value >= 1_000) return (value / 1_000).toFixed(2) + 'K';
+    return value.toFixed(2);
+  };
+
   // Mock data for the chart
   const mockData = {
     labels: ['8AM', '10AM', '12PM', '2PM', '4PM', '6PM'],
@@ -20,11 +44,11 @@ export function MetricsSummary({ data }: MetricsSummaryProps) {
       },
     ],
   };
-  
+
   return (
     <View style={[styles.container, { backgroundColor: colors.card }]}>
       <View style={styles.chartContainer}>
-        <LineChart 
+        <LineChart
           data={mockData}
           width={300}
           height={160}
@@ -38,39 +62,39 @@ export function MetricsSummary({ data }: MetricsSummaryProps) {
             propsForDots: {
               r: '4',
               strokeWidth: '2',
-              stroke: colors.primary
+              stroke: colors.primary,
             },
             propsForLabels: {
               fontSize: 10,
-            }
+            },
           }}
           bezier
           style={styles.chart}
         />
       </View>
-      
+
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: colors.text }]}>
-            42 Mbps
+            {formatNumber(fetchedNetworkStats.avgDownloadSpeed)}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
             Avg. Download
           </Text>
         </View>
-        
+
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: colors.text }]}>
-            12 Mbps
+            {formatNumber(fetchedNetworkStats.avgUploadSpeed)}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
             Avg. Upload
           </Text>
         </View>
-        
+
         <View style={styles.statItem}>
           <Text style={[styles.statValue, { color: colors.text }]}>
-            38ms
+            {formatNumber(fetchedNetworkStats.avgLatency)}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
             Avg. Latency

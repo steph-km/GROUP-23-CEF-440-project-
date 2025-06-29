@@ -7,7 +7,7 @@ import { DashboardHeader } from '@/components/DashboardHeader';
 import { StatusCard } from '@/components/StatusCard';
 import { MetricsSummary } from '@/components/MetricsSummary';
 import { FeedbackPrompt } from '@/components/FeedbackPrompt';
-import { getNetworkStats, NetworkSample } from '@/utils/networkUtils';
+import { getNetworkStats, getNetworkStatsFromServer, NetworkSample, submitNetworkMetrics } from '@/utils/networkUtils';
 import { getCurrentNetworkInfo } from '@/utils/networkUtils'; // update import if needed
 
 type StatusLevel = 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
@@ -27,6 +27,7 @@ type NetworkStats = {
 export default function Dashboard() {
   const { colors } = useTheme();
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchedNetworkStats, setFetchedNetworkStats] = useState<any>([]);
   const [networkStats, setNetworkStats] = useState<NetworkStats | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
 
@@ -37,7 +38,8 @@ export default function Dashboard() {
   const loadNetworkData = async () => {
     try {
      const stats = await getCurrentNetworkInfo();
-
+     await submitNetworkMetrics();
+    
       if (!stats) {
         setNetworkStats(null);
         return;
@@ -58,7 +60,8 @@ export default function Dashboard() {
       };
 
       setNetworkStats(transformed);
-      setLastRefreshed(new Date());
+    
+      setLastRefreshed(new Date()); 
     } catch (error) {
       console.error('Failed to load network data:', error);
     }
