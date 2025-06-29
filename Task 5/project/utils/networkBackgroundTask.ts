@@ -1,6 +1,7 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import { getCurrentNetworkInfo, logDailyNetworkSummary } from './networkUtils';
+import { submitNetworkMetrics } from './networkUtils';
 
 const TASK_NAME = 'network-monitor-task';
 
@@ -10,6 +11,7 @@ TaskManager.defineTask(TASK_NAME, async () => {
     console.log('Background task ran at:', new Date().toLocaleString()); // ✅ Added timestamp log
     await getCurrentNetworkInfo();
     await logDailyNetworkSummary();
+    await submitNetworkMetrics();
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (err) {
     console.warn('Background task failed:', err);

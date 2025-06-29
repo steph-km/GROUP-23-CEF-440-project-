@@ -286,3 +286,86 @@ export const logDailyNetworkSummary = async () => {
   console.log('Avg Upload Speed (Mbps):', avgUpload);
   console.log('Avg Latency (ms):', avgLatency);
 };
+
+export const submitNetworkMetrics = async () => {
+  try {
+    console.log('📡 Collecting current network info...');
+    const data = await getCurrentNetworkInfo();
+
+    const token = await AsyncStorage.getItem('userToken');
+    if (!token) {
+      console.warn('User token not found. Cannot submit network metrics.');
+      return;
+    }
+
+    const payload = {
+      deviceId: `device-${Platform.OS}`, // Optional: could use device-specific UUID if available
+      timestamp: new Date().toISOString(),
+      connectionType: data.type,
+      isConnected: data.isConnected,
+      isInternetReachable: data.isInternetReachable ?? false,
+      signalStrength: data.signalStrength ?? -100, // fallback for null
+      downloadSpeed: data.downloadSpeed,
+      downloadStatus: data.downloadStatus,
+      uploadSpeed: data.uploadSpeed,
+      uploadStatus: data.uploadStatus,
+      latency: data.latency,
+      latencyStatus: data.latencyStatus,
+      location: data.location ? {
+        latitude: data.location.latitude,
+        longitude: data.location.longitude,
+        accuracy: data.location.accuracy
+      } : { latitude: 0, longitude: 0, accuracy: 0 }
+    };
+
+    console.log('📤 Payload to be sent:', JSON.stringify(payload, null, 2));
+
+    const response = await fetch('https://trackify-i4hx.onrender.com/api/network-metrics', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('🚨 Error submitting metrics:', result);
+    } else {
+      console.log('✅ Network metrics submitted successfully:', result);
+    }
+  } catch (err) {
+    console.error('❌ Failed to submit network metrics:', err);
+  }
+};
+
+
+
+// networkApi.ts
+export const getNetworkStatsFromServer = async () => {
+  const token = await AsyncStorage.getItem('userToken');
+  try {
+    const response = await fetch('https://trackify-i4hx.onrender.com/api/network-metrics/stats', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.warn("❌ Failed to fetch stats:", error);
+      throw new Error(error.message || 'Failed to fetch network stats');
+    }
+
+    const stats = await response.json();
+    console.log("📊 Network stats fetched:", stats);
+    return stats;
+  } catch (error) {
+    console.error("🚨 Error in getNetworkStatsFromServer:", error);
+    throw error;
+  }
+};

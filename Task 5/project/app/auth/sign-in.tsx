@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -12,16 +12,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { Eye, EyeOff } from 'lucide-react-native';
-import { getObject } from '@/utils/storage';
+import { setItem } from '@/utils/storage'; // ✅ import storage utility
 
-const FORM_KEY = 'signUpFormData';
+const API_URL = 'https://trackify-i4hx.onrender.com/api/auth/login';
 
 export default function SignInScreen() {
   const { colors } = useTheme();
-  const { signIn } = useAuth();
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,6 +29,7 @@ export default function SignInScreen() {
 
   const handleSignIn = async () => {
     setError('');
+
     if (!email || !password) {
       setError('Please fill in all fields');
       return;
@@ -42,35 +40,33 @@ export default function SignInScreen() {
       return;
     }
 
-    const saved = await getObject(FORM_KEY);
-
-    if (
-      saved &&
-      typeof saved === 'object' &&
-      'email' in saved &&
-      'password' in saved
-    ) {
-      const match =
-        (saved as { email: string; password: string }).email === email &&
-        (saved as { email: string; password: string }).password === password;
-      if (match) {
-        console.log('✅ User matched with stored sign-up info');
-      } else {
-        console.log('❌ User info does not match stored data');
-        Alert.alert('Error', 'Incorrect email or password');
-        return;
-      }
-    } else {
-      console.log('⚠️ No saved user info found');
-    }
-
     try {
       setIsLoading(true);
-      await signIn(email, password);
+
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Invalid credentials');
+      }
+
+      const { token, user } = data.data;
+
+      // ✅ Store in local storage
+      await setItem('userToken', token);
+      await setItem('userData', JSON.stringify(user));
+
+      console.log('✅ Login successful:', data);
+
       router.replace('/(tabs)');
-    } catch (err) {
-      console.error('Sign-in error:', err);
-      setError('Failed to sign in. Please check your credentials.');
+    } catch (err: any) {
+      console.error('❌ Login error:', err);
+      setError(err.message || 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -123,11 +119,7 @@ export default function SignInScreen() {
           </View>
 
           <TouchableOpacity
-            style={[
-              styles.button,
-              { backgroundColor: colors.primary },
-              isLoading && { opacity: 0.7 },
-            ]}
+            style={[styles.button, { backgroundColor: colors.primary }, isLoading && { opacity: 0.7 }]}
             onPress={handleSignIn}
             disabled={isLoading}
           >

@@ -7,8 +7,7 @@ import { DashboardHeader } from '@/components/DashboardHeader';
 import { StatusCard } from '@/components/StatusCard';
 import { MetricsSummary } from '@/components/MetricsSummary';
 import { FeedbackPrompt } from '@/components/FeedbackPrompt';
-import { getNetworkStats, NetworkSample } from '@/utils/networkUtils';
-import { getCurrentNetworkInfo } from '@/utils/networkUtils'; // update import if needed
+import { getCurrentNetworkInfo, submitNetworkMetrics, NetworkSample } from '@/utils/networkUtils';
 
 type StatusLevel = 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
 
@@ -36,7 +35,8 @@ export default function Dashboard() {
 
   const loadNetworkData = async () => {
     try {
-     const stats = await getCurrentNetworkInfo();
+      const stats = await getCurrentNetworkInfo();
+      await submitNetworkMetrics();
 
       if (!stats) {
         setNetworkStats(null);
@@ -118,7 +118,7 @@ export default function Dashboard() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Today's Overview</Text>
-        <MetricsSummary data={networkStats?.dailySummary || []} />
+        <MetricsSummary />
 
         <FeedbackPrompt />
       </ScrollView>
@@ -155,5 +155,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 8,
     marginBottom: 16,
-  },
+  },  
 });

@@ -1,78 +1,105 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { LineChart } from '@/components/LineChart';
+import { LineChart } from 'react-native-chart-kit';
+import { getNetworkStatsFromServer } from '@/utils/networkUtils';
+import { useEffect, useState } from 'react';
 
-interface MetricsSummaryProps {
-  data: any[];
-}
-
-export function MetricsSummary({ data }: MetricsSummaryProps) {
+export function MetricsSummary() {
   const { colors } = useTheme();
-  
-  // Mock data for the chart
-  const mockData = {
-    labels: ['8AM', '10AM', '12PM', '2PM', '4PM', '6PM'],
+
+  const [fetchedNetworkStats, setFetchedNetworkStats] = useState<any>({
+    avgDownloadSpeed: 0,
+    avgUploadSpeed: 0,
+    avgLatency: 0,
+  });
+
+  useEffect(() => {
+    fetchingStats();
+  }, []);
+
+  const fetchingStats = async () => {
+    try {
+      const fetched = await getNetworkStatsFromServer();
+      setFetchedNetworkStats(fetched.data);
+    } catch (error) {
+      console.error('Failed to fetch network stats:', error);
+    }
+  };
+
+  const formatNumber = (value: number | undefined): string => {
+    if (value === undefined || value === null || isNaN(value)) return '--';
+    if (value >= 1_000_000) return (value / 1_000_000).toFixed(2) + 'M';
+    if (value >= 1_000) return (value / 1_000).toFixed(2) + 'K';
+    return value.toFixed(2);
+  };
+
+  const chartData = {
+    labels: ['Download', 'Upload', 'Latency'],
     datasets: [
       {
-        data: [25, 45, 28, 80, 99, 43],
+        data: [
+          fetchedNetworkStats.avgDownloadSpeed || 0,
+          fetchedNetworkStats.avgUploadSpeed || 0,
+          fetchedNetworkStats.avgLatency || 0,
+        ],
         color: () => colors.primary,
         strokeWidth: 2,
       },
     ],
   };
-  
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.card }]}>
+    <View style={[styles.container, { backgroundColor: colors.card }]}>      
       <View style={styles.chartContainer}>
-        <LineChart 
-          data={mockData}
-          width={300}
-          height={160}
+        <LineChart
+          data={chartData}
+          width={Dimensions.get('window').width - 40}
+          height={180}
+          bezier
           chartConfig={{
-            backgroundColor: 'transparent',
-            backgroundGradientFrom: 'transparent',
-            backgroundGradientTo: 'transparent',
-            decimalPlaces: 0,
+            backgroundColor: colors.card,
+            backgroundGradientFrom: colors.card,
+            backgroundGradientTo: colors.card,
+            decimalPlaces: 2,
             color: () => colors.primary,
             labelColor: () => colors.textSecondary,
             propsForDots: {
-              r: '4',
+              r: '5',
               strokeWidth: '2',
-              stroke: colors.primary
+              stroke: colors.primary,
             },
             propsForLabels: {
               fontSize: 10,
-            }
+            },
           }}
-          bezier
           style={styles.chart}
         />
       </View>
-      
+
       <View style={styles.statsContainer}>
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            42 Mbps
+          <Text style={[styles.statValue, { color: colors.text }]}>            
+            {formatNumber(fetchedNetworkStats.avgDownloadSpeed)} Mbps
           </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>            
             Avg. Download
           </Text>
         </View>
-        
+
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            12 Mbps
+          <Text style={[styles.statValue, { color: colors.text }]}>            
+            {formatNumber(fetchedNetworkStats.avgUploadSpeed)} Mbps
           </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>            
             Avg. Upload
           </Text>
         </View>
-        
+
         <View style={styles.statItem}>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            38ms
+          <Text style={[styles.statValue, { color: colors.text }]}>            
+            {formatNumber(fetchedNetworkStats.avgLatency)} ms
           </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>            
             Avg. Latency
           </Text>
         </View>

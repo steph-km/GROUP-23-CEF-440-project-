@@ -17,12 +17,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Feedback categories
 const FEEDBACK_CATEGORIES = [
-  'Call Quality',
-  'Internet Speed',
-  'Signal Strength',
-  'App Experience',
-  'Customer Service',
-  'Other'
+  { label: 'Call Quality', value: 'call_quality' },
+  { label: 'Internet Speed', value: 'data_speed' },
+  { label: 'Signal Strength', value: 'signal_strength' },
+  { label: 'App Experience', value: 'app_experience' },
+  { label: 'Customer Service', value: 'customer_service' },
+  { label: 'Other', value: 'other' },
 ];
 
 // Buea locations with coordinates
@@ -36,14 +36,30 @@ const BUEA_LOCATIONS = [
   { label: 'Wotolo', value: 'Wotolo', lat: 4.139, lng: 9.302 },
   { label: 'Sandpit', value: 'Sandpit', lat: 4.155, lng: 9.310 },
   { label: 'Great Soppo', value: 'Great Soppo', lat: 4.124, lng: 9.290 },
+  { label: 'Small Soppo', value: 'Small Soppo', lat: 4.130, lng: 9.288 },
   { label: 'Clerks Quarters', value: 'Clerks Quarters', lat: 4.134, lng: 9.304 },
+  { label: 'GRA', value: 'GRA', lat: 4.145, lng: 9.295 },
   { label: 'Bokwango', value: 'Bokwango', lat: 4.120, lng: 9.285 },
+  { label: 'Bokwai', value: 'Bokwai', lat: 4.105, lng: 9.270 },
+  { label: 'Likoko', value: 'Likoko', lat: 4.110, lng: 9.255 },
   { label: 'Mile 16', value: 'Mile 16', lat: 4.110, lng: 9.270 },
+  { label: 'Mile 17', value: 'Mile 17', lat: 4.115, lng: 9.273 },
   { label: 'Mile 18', value: 'Mile 18', lat: 4.100, lng: 9.265 },
   { label: 'Buea Town', value: 'Buea Town', lat: 4.120, lng: 9.320 },
   { label: 'Bakweri Town', value: 'Bakweri Town', lat: 4.125, lng: 9.327 },
   { label: 'Dschang Quarter', value: 'Dschang Quarter', lat: 4.130, lng: 9.315 },
 ];
+
+
+const getExperienceDescription = (rating: number): 'very_poor' | 'poor' | 'fair' | 'good' | 'excellent' => {
+  if (rating >= 1 && rating <= 1) return 'very_poor';
+  if (rating === 2) return 'poor';
+  if (rating === 3) return 'fair';
+  if (rating === 4) return 'good';
+  return 'excellent'; // rating 5
+};
+
+
 
 export default function FeedbackScreen() {
   const { colors } = useTheme();
@@ -52,39 +68,63 @@ export default function FeedbackScreen() {
   const [feedbackText, setFeedbackText] = useState('');
   const [rating, setRating] = useState(0);
 
-  const handleSubmitFeedback = async () => {
-    if (!selectedCategory || !selectedLocation || (!feedbackText.trim() && rating === 0)) {
-      Alert.alert("Missing Information", "Please complete all required fields.");
+ const handleSubmitFeedback = async () => {
+  if (!selectedCategory || !selectedLocation || (!feedbackText.trim() && rating === 0)) {
+    Alert.alert("Missing Information", "Please complete all required fields.");
+    return;
+  }
+
+  try {
+    const token = await AsyncStorage.getItem('userToken');
+    const userData = await AsyncStorage.getItem('userData');
+    const parsedUser = userData ? JSON.parse(userData) : {};
+    const networkProvider = parsedUser?.preferences?.network || 'Unknown';
+
+    if (!token) {
+      Alert.alert("Unauthorized", "Please log in to submit feedback.");
       return;
     }
 
     const locationData = BUEA_LOCATIONS.find(loc => loc.value === selectedLocation);
 
-    const newFeedback = {
-      category: selectedCategory,
-      text: feedbackText.trim(),
-      rating,
-      location: {
-        name: selectedLocation,
-        lat: locationData?.lat,
-        lng: locationData?.lng
+   const payload = {
+  experience: getExperienceDescription(rating), // e.g. "good"
+  areaOfFeedback: selectedCategory, // e.g. "data_speed"
+  description: feedbackText.trim(),
+  rating, // 1–5 only
+  location: {
+    latitude: locationData?.lat,
+    longitude: locationData?.lng,
+  },
+  networkProvider: networkProvider, // Replace with selected or detected value
+  resolved: false,
+};
+
+
+
+    const response = await fetch('https://trackify-i4hx.onrender.com/api/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
       },
-      timestamp: new Date().toISOString(),
-    };
+      body: JSON.stringify(payload),
+    });
 
-    // Log feedback to console
-    console.log('📬 New Feedback Submitted:', JSON.stringify(newFeedback, null, 2));
-
-    try {
-      const existing = await AsyncStorage.getItem('feedbacks');
-      const parsed = existing ? JSON.parse(existing) : [];
-      const updatedFeedbacks = [...parsed, newFeedback];
-      await AsyncStorage.setItem('feedbacks', JSON.stringify(updatedFeedbacks));
-      Alert.alert("Thank You!", "Your feedback has been submitted.", [{ text: "OK", onPress: resetForm }]);
-    } catch (error) {
-      console.error('❌ Failed to store feedback:', error);
+    if (!response.ok) {
+      const err = await response.json();
+      console.error("🚨 Server Error:", err);
+      Alert.alert("Error", err.message || "Failed to submit feedback.");
+      return;
     }
-  };
+
+    Alert.alert("✅ Thank you!", "Your feedback has been submitted.", [{ text: "OK", onPress: resetForm }]);
+  } catch (error) {
+    console.error("❌ Submit error:", error);
+    Alert.alert("Error", "Something went wrong. Try again later.");
+  }
+};
+
 
   const resetForm = () => {
     setSelectedCategory('');
@@ -102,7 +142,7 @@ export default function FeedbackScreen() {
           Rate your network experience (1–10)
         </Text>
         <View style={styles.ratingBar}>
-          {[...Array(10)].map((_, i) => {
+          {[...Array(5)].map((_, i) => {
             const value = i + 1;
             return (
               <TouchableOpacity
@@ -125,25 +165,31 @@ export default function FeedbackScreen() {
         <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
           Select Feedback Category
         </Text>
-        <View style={styles.categoriesContainer}>
-          {FEEDBACK_CATEGORIES.map(category => (
-            <TouchableOpacity
-              key={category}
-              style={[
-                styles.categoryChip,
-                {
-                  backgroundColor: selectedCategory === category ? colors.primary : colors.card,
-                  borderColor: colors.border,
-                }
-              ]}
-              onPress={() => setSelectedCategory(category)}
-            >
-              <Text style={{ color: selectedCategory === category ? 'white' : colors.text }}>
-                {category}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+    <View style={styles.categoriesContainer}>
+  {FEEDBACK_CATEGORIES.map(({ label, value }) => {
+    const isSelected = selectedCategory === value;
+
+    return (
+      <TouchableOpacity
+        key={value}
+        style={[
+          styles.categoryChip,
+          {
+            backgroundColor: isSelected ? colors.primary : colors.card,
+            borderColor: colors.border,
+          }
+        ]}
+        onPress={() => setSelectedCategory(value)}  // ✅ set value, not label
+      >
+        <Text style={{ color: isSelected ? 'white' : colors.text }}>
+          {label}
+        </Text>
+      </TouchableOpacity>
+    );
+  })}
+</View>
+
+
 
         <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>
           Select Location
@@ -176,7 +222,7 @@ export default function FeedbackScreen() {
         />
 
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
-          Additional Comments
+          Additional Comments(must not be less than 10 characters)
         </Text>
         <View style={[styles.textInputContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <TextInput

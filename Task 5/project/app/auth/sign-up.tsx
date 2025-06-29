@@ -1,17 +1,30 @@
+// ✅ Final Updated Version of SignUpScreen with API, NetInfo, and Device ID
+
 import { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { ArrowLeft, Eye, EyeOff, Check } from 'lucide-react-native';
+import NetInfo from '@react-native-community/netinfo';
+import * as Device from 'expo-device';
+import axios from 'axios';
 import { getObject, setObject, removeItem } from '@/utils/storage';
 
 const FORM_KEY = 'signUpFormData';
+const API_BASE = 'https://trackify-i4hx.onrender.com/api';
 
 export default function SignUpScreen() {
   const { colors } = useTheme();
-  const { signUp } = useAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -19,6 +32,8 @@ export default function SignUpScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [location, setLocation] = useState('');
+  const [network, setNetwork] = useState('');
+  const [deviceId, setDeviceId] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -43,19 +58,34 @@ export default function SignUpScreen() {
         setLocation(form.location || '');
       }
     };
+
+    const fetchDeviceAndNetwork = async () => {
+      const netState = await NetInfo.fetch();
+      let carrier = 'Unknown';
+      if (netState.type === 'cellular' && 'carrier' in (netState.details ?? {})) {
+        carrier = (netState.details as { carrier?: string | null }).carrier || 'Unknown';
+      }
+      const id = Device.osBuildId || `device-${Date.now()}`;
+
+      console.log('Network:', carrier);
+      console.log('Device ID:', id);
+
+      setNetwork(carrier);
+      setDeviceId(id);
+    };
+
     loadForm();
+    fetchDeviceAndNetwork();
   }, []);
 
-  interface SignUpFormData {
-    name?: string;
-    email?: string;
-    password?: string;
-    confirmPassword?: string;
-    phoneNumber?: string;
-    location?: string;
-  }
-
-  const persistForm = (newState: Partial<SignUpFormData>): void => {
+  const persistForm = (newState: Partial<{
+    name: string;
+    email: string;
+    password: string;
+    confirmPassword: string;
+    phoneNumber: string;
+    location: string;
+  }>) => {
     setObject(FORM_KEY, {
       name,
       email,
@@ -67,23 +97,9 @@ export default function SignUpScreen() {
     });
   };
 
-  interface ValidatePassword {
-    (pass: string): boolean;
-  }
-
-  const validatePassword: ValidatePassword = (pass) => pass.length >= 8;
-
-  interface ValidateEmail {
-    (email: string): boolean;
-  }
-
-  const validateEmail: ValidateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-
-  interface ValidateCameroonPhone {
-    (phone: string): boolean;
-  }
-
-  const validateCameroonPhone: ValidateCameroonPhone = (phone) => /^(?:\+237|0)(6[579]|2[23])\d{7}$/.test(phone);
+  const validatePassword = (pass: string) => pass.length >= 8;
+  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateCameroonPhone = (phone: string) => /^(?:\+237|0)(6[579]|2[23])\d{7}$/.test(phone);
 
   const handleSignUp = async () => {
     if (!name || !email || !password || !confirmPassword || !phoneNumber || !location) {
@@ -115,8 +131,19 @@ export default function SignUpScreen() {
     setError('');
 
     try {
-      await signUp(name, email, password, phoneNumber, location);
-      console.log('User signed up with:', { name, email, password, phoneNumber, location });
+      await axios.post(`${API_BASE}/auth/register`, {
+        name,
+        email,
+        password,
+        deviceId,
+        preferences: {
+          network,
+          anonymize: false,
+          dataSharing: true,
+        },
+      });
+
+      console.log('User registered:', { name, email, deviceId, network });
       await removeItem(FORM_KEY);
       router.replace('/(tabs)');
     } catch (err) {

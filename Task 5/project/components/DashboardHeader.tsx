@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Bell } from 'lucide-react-native';
 import { formatDistanceToNow } from '@/utils/dateUtils';
@@ -10,21 +12,37 @@ interface DashboardHeaderProps {
 
 export function DashboardHeader({ lastRefreshed }: DashboardHeaderProps) {
   const { colors } = useTheme();
-  const { user } = { user: { name: 'Jamison Lii' } }; // Mock user data, would come from auth context
-  
+  const [userName, setUserName] = useState('User');
+
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        if (userData) {
+          const parsed = JSON.parse(userData);
+          setUserName(parsed?.name || 'User');
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      }
+    };
+
+    loadUser();
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.topRow}>
         <View>
           <Text style={[styles.greeting, { color: colors.text }]}>
-            Hello, {user?.name || 'User'}
+            Hello, {userName}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Trackify Dashboard
           </Text>
         </View>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.notificationButton, { backgroundColor: colors.card }]}
           onPress={() => router.navigate('/About/notifications')}
         >
@@ -32,7 +50,7 @@ export function DashboardHeader({ lastRefreshed }: DashboardHeaderProps) {
           <View style={[styles.notificationBadge, { backgroundColor: colors.primary }]} />
         </TouchableOpacity>
       </View>
-      
+
       <Text style={[styles.lastUpdated, { color: colors.textSecondary }]}>
         Last updated {formatDistanceToNow(lastRefreshed)} ago
       </Text>

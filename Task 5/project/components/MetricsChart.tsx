@@ -1,9 +1,12 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { LineChart } from '@/components/LineChart';
+import { LineChart } from 'react-native-chart-kit';
 
 interface MetricsChartProps {
-  data: any;
+  data: {
+    labels: string[];
+    datasets: { data: number[] }[];
+  };
   width: number;
   height: number;
   chartType: string;
@@ -11,51 +14,44 @@ interface MetricsChartProps {
 
 export function MetricsChart({ data, width, height, chartType }: MetricsChartProps) {
   const { colors } = useTheme();
-  
-  const getChartConfig = () => {
-    let primaryColor = colors.primary;
-    
-    // Adjust color based on chart type
+
+  const getPrimaryColor = () => {
     switch (chartType) {
       case 'signal':
-        primaryColor = colors.success;
-        break;
+        return colors.success;
       case 'speed':
-        primaryColor = colors.primary;
-        break;
+        return colors.primary;
       case 'latency':
-        primaryColor = colors.warning;
-        break;
+        return colors.warning;
       case 'reliability':
-        primaryColor = colors.secondary;
-        break;
+        return colors.secondary;
       default:
-        primaryColor = colors.primary;
+        return colors.primary;
     }
-    
-    return {
-      backgroundColor: 'transparent',
-      backgroundGradientFrom: 'transparent',
-      backgroundGradientTo: 'transparent',
-      decimalPlaces: chartType === 'latency' ? 0 : 1,
-      color: () => primaryColor,
-      labelColor: () => colors.textSecondary,
-      propsForDots: {
-        r: '4',
-        strokeWidth: '2',
-        stroke: primaryColor
-      },
-      propsForLabels: {
-        fontSize: 12,
-      },
-      propsForBackgroundLines: {
-        stroke: colors.border,
-        strokeDasharray: '5, 5',
-        strokeWidth: 1,
-      },
-    };
   };
-  
+
+  const chartConfig = {
+    backgroundColor: 'transparent',
+    backgroundGradientFrom: 'transparent',
+    backgroundGradientTo: 'transparent',
+    decimalPlaces: chartType === 'latency' ? 0 : 1,
+    color: (opacity = 1) => getPrimaryColor(),
+    labelColor: (opacity = 1) => colors.textSecondary,
+    propsForDots: {
+      r: '4',
+      strokeWidth: '2',
+      stroke: getPrimaryColor(),
+    },
+    propsForLabels: {
+      fontSize: 12,
+    },
+    propsForBackgroundLines: {
+      stroke: colors.border,
+      strokeDasharray: '5, 5',
+      strokeWidth: 1,
+    },
+  };
+
   const getChartMetric = () => {
     switch (chartType) {
       case 'signal':
@@ -70,24 +66,24 @@ export function MetricsChart({ data, width, height, chartType }: MetricsChartPro
         return '';
     }
   };
-  
+
   return (
     <View style={styles.container}>
       <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>
         {getChartMetric()}
       </Text>
-      
+
       <LineChart
         data={data}
         width={width}
         height={height}
-        chartConfig={getChartConfig()}
+        chartConfig={chartConfig}
         bezier
         style={styles.chart}
-        withInnerLines={true}
+        withInnerLines
         withOuterLines={false}
-        withHorizontalLabels={true}
-        withVerticalLabels={true}
+        withHorizontalLabels
+        withVerticalLabels
       />
     </View>
   );
